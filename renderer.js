@@ -16,10 +16,14 @@ const createPanel = document.getElementById('create-panel');
 const editPanel = document.getElementById('edit-panel');
 const createName = document.getElementById('create-name');
 const createContent = document.getElementById('create-content');
+const createSoundStart = document.getElementById('create-sound-start');
+const createSoundEnd = document.getElementById('create-sound-end');
 const createSave = document.getElementById('create-save');
 const createError = document.getElementById('create-error');
 const editName = document.getElementById('edit-name');
 const editContent = document.getElementById('edit-content');
+const editSoundStart = document.getElementById('edit-sound-start');
+const editSoundEnd = document.getElementById('edit-sound-end');
 const editSave = document.getElementById('edit-save');
 const editError = document.getElementById('edit-error');
 const btnRunToggle = document.getElementById('btn-run-toggle');
@@ -47,13 +51,32 @@ function renderCards() {
   cardList.innerHTML = '';
   const isDeleteMode = state.deleteMode;
 
-  state.schedules.forEach((s) => {
+  // Sort by updatedAt desc
+  const sorted = [...state.schedules].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+  sorted.forEach((s) => {
+    const isRunning = s.id === state.runningId;
     const card = document.createElement('div');
-    card.className = 'schedule-card' + (s.id === state.activeId ? ' active' : '');
+    card.className = 'schedule-card' + (s.id === state.activeId ? ' active' : '') + (isRunning ? ' running' : '');
     card.dataset.id = s.id;
+    
+    // Check if deletable (not running and not active)
+    // Requirement 3 says: "不用担心删除的时间表刚好是被点开的时间表的情况，因为被点开的时间表前面不会有删除符号"
+    // So we hide delete btn for active item too.
+    const canDelete = !isRunning && s.id !== state.activeId;
+    
+    let deleteBtnHtml = '';
+    // Placeholder logic: Always have placeholder space to align text, only show btn if can delete
+    if (canDelete) {
+      deleteBtnHtml = `<button class="card-delete-btn" data-id="${s.id}" title="删除">−</button>`;
+    } else {
+       deleteBtnHtml = `<span class="card-delete-placeholder"></span>`; 
+    }
+
     card.innerHTML = `
-      <button class="card-delete-btn" data-id="${s.id}" title="删除">−</button>
+      ${deleteBtnHtml}
       <span class="card-name">${escapeHtml(s.name)}</span>
+      ${isRunning ? '<span class="running-indicator-icon">🟢</span>' : ''}
     `;
     card.querySelector('.card-name').addEventListener('click', (e) => {
       if (!isDeleteMode) {
@@ -61,16 +84,21 @@ function renderCards() {
         selectSchedule(s.id);
       }
     });
-    card.querySelector('.card-delete-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteSchedule(s.id);
-    });
+    
+    const delBtn = card.querySelector('.card-delete-btn');
+    if (delBtn) {
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteSchedule(s.id);
+      });
+    }
+
     card.addEventListener('click', () => {
       if (!isDeleteMode) selectSchedule(s.id);
     });
     cardList.appendChild(card);
   });
-
+  
   if (isDeleteMode) {
     cardList.classList.add('delete-mode');
     btnDeleteMode.textContent = '←';
@@ -109,6 +137,8 @@ function showCreatePanel() {
   state.activeId = null;
   createName.value = '';
   createContent.value = '';
+  createSoundStart.value = 'success';
+  createSoundEnd.value = 'chime';
   createError.textContent = '';
   renderCards();
 }
@@ -124,6 +154,8 @@ function showEditPanel(id) {
   const s = state.schedules.find((x) => x.id === id);
   if (s) {
     editName.value = s.name;
+    editSoundStart.value = s.soundStart || 'success';
+    editSoundEnd.value = s.soundEnd || s.sound || 'chime'; // Fallback to old sound field for end
     editContent.value = (s.items || [])
       .map((it) => `${it.start}-${it.end} ${it.title}`)
       .join('\n');
@@ -159,6 +191,8 @@ function generateId() {
 async function doCreate() {
   const name = createName.value.trim();
   const content = createContent.value.trim();
+  const soundStart = createSoundStart.value;
+  const soundEnd = createSoundEnd.value;
   createError.textContent = '';
   if (!name) {
     createError.textContent = '请输入时间表名称';
@@ -182,6 +216,8 @@ async function doCreate() {
   const schedule = {
     id: generateId(),
     name,
+    soundStart,
+    soundEnd,
     items: result.items,
     updatedAt: Date.now()
   };
@@ -199,6 +235,8 @@ async function doEditSave() {
 
   const name = editName.value.trim();
   const content = editContent.value.trim();
+  const soundStart = editSoundStart.value;
+  const soundEnd = editSoundEnd.value;
   editError.textContent = '';
   if (!name) {
     editError.textContent = '请输入时间表名称';
@@ -219,6 +257,8 @@ async function doEditSave() {
   if (s) {
     s.name = name;
     s.items = result.items;
+    s.soundStart = soundStart;
+    s.soundEnd = soundEnd;
     s.updatedAt = Date.now();
   }
   await saveData();
@@ -251,8 +291,13 @@ async function deleteSchedule(id) {
   }
   if (state.lastModifiedId === id) state.lastModifiedId = null;
   await saveData();
-  exitDeleteMode();
-  showRightPanel();
+  // Don't exit delete mode
+  // Don't change right panel if deleted item was not active (but active item is not deletable anyway if running, though if active but not running it could be deleted)
+  // Requirement: "删除某个时间表后面板右部展示的时间表信息不能变"
+  // If we deleted the active item, we might need to clear right panel or keep showing it? 
+  // User says "不用担心删除的时间表刚好是被点开的时间表的情况，因为被点开的时间表前面不会有删除符号"
+  // So we just render cards again.
+  renderCards();
 }
 
 function toggleDeleteMode() {
@@ -285,6 +330,14 @@ btnDeleteMode.addEventListener('click', () => {
 createSave.addEventListener('click', () => doCreate());
 editSave.addEventListener('click', () => doEditSave());
 btnRunToggle.addEventListener('click', () => toggleRun());
+
+// Sound Preview
+const soundSelectors = [createSoundStart, createSoundEnd, editSoundStart, editSoundEnd];
+soundSelectors.forEach(sel => {
+  sel.addEventListener('change', () => {
+    window.taskFlowAPI.previewSound(sel.value);
+  });
+});
 
 loadData().then(() => {
   showRightPanel();

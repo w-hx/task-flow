@@ -117,39 +117,69 @@ body {
 .delete-mode .schedule-card.active .card-delete-btn {
   display: none;
 }
+.running-indicator-icon {
+  font-size: 10px;
+  line-height: 1;
+}
+.schedule-card.running {
+
+}
+.card-delete-placeholder {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: none;
+}
+.delete-mode .card-delete-placeholder {
+  display: block;
+}
 .right-panel {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
   background: #f5f5f7;
 }
-.form-panel {
-  max-width: 520px;
+.form-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  margin-bottom: 6px;
 }
-.form-panel h2 {
-  font-size: 20px;
-  margin: 0 0 20px;
+.form-group {
+  flex: 1;
+}
+.form-group.small {
+  flex: 0 0 140px;
 }
 .form-panel label {
   display: block;
   font-size: 13px;
   color: #6e6e73;
-  margin: 12px 0 6px;
+  margin: 0 0 6px;
 }
 .form-panel input,
+.form-panel select,
 .form-panel textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border: 1px solid #d1d1d6;
   border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
 }
 .form-panel textarea {
-  min-height: 280px;
-  resize: vertical;
+  flex: 1;
+  resize: none;
+  min-height: 0;
+}
+.form-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 800px;
 }
 .form-panel input:focus,
+.form-panel select:focus,
 .form-panel textarea:focus {
   outline: none;
   border-color: #007aff;
@@ -158,7 +188,8 @@ body {
   display: flex;
   gap: 12px;
   align-items: center;
-  margin-top: 20px;
+  margin-top: 12px;
+  flex-shrink: 0;
 }
 .btn-primary {
   padding: 10px 20px;
@@ -197,7 +228,8 @@ body {
 .error-msg {
   color: #ff3b30;
   font-size: 13px;
-  margin-top: 10px;
+  margin-top: 8px;
+  flex-shrink: 0;
 }
 .hidden {
   display: none !important;

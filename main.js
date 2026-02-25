@@ -10,6 +10,8 @@ let trayTimer = null;
 const DATA_PATH = path.join(app.getPath('userData'), 'schedules.json');
 const MAX_SCHEDULES = 10;
 
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 // 确保数据目录存在
 function ensureDataDir() {
   const dir = path.dirname(DATA_PATH);
@@ -103,12 +105,18 @@ function createTray() {
   });
 }
 
-function updateTrayMenu() {
-  const contextMenu = Menu.buildFromTemplate([
-    { label: '显示 TaskFlow', click: () => showMainWindow() },
+function updateTrayMenu(nextTaskName) {
+  const template = [
+    { label: '主面板', click: () => showMainWindow() },
     { type: 'separator' },
     { label: '退出', click: () => app.quit() }
-  ]);
+  ];
+
+  if (nextTaskName) {
+    template.unshift({ label: `下一个任务：${nextTaskName}`, enabled: false });
+  }
+
+  const contextMenu = Menu.buildFromTemplate(template);
   tray.setContextMenu(contextMenu);
 }
 
@@ -118,30 +126,101 @@ function formatTime(sec) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function getCurrentTask(runningId, schedules) {
+function getCurrentTask(runningId, schedules, nowSec) {
   if (!runningId) return null;
   const s = schedules.find((x) => x.id === runningId);
   if (!s || !s.items || s.items.length === 0) return null;
-  const now = new Date();
-  const nowSec = (now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds();
   for (const it of s.items) {
     const startSec = it.startMin * 60;
     const endSec = it.endMin * 60;
     if (nowSec >= startSec && nowSec < endSec) {
       const totalSec = (it.endMin - it.startMin) * 60;
       const remaining = totalSec - (nowSec - startSec);
-      return { title: '『' + it.title + '』', remaining, total: totalSec };
+      const key = `${it.startMin}-${it.endMin}-${it.title}`;
+      return { 
+        title: '『' + it.title + '』', 
+        remaining, 
+        total: totalSec, 
+        key, 
+        endSec, 
+        soundStart: s.soundStart || 'success',
+        soundEnd: s.soundEnd || s.sound || 'chime' 
+      };
     }
   }
   return null;
 }
 
+function getNextTask(runningId, schedules, nowSec) {
+  if (!runningId) return null;
+  const s = schedules.find((x) => x.id === runningId);
+  if (!s || !s.items || s.items.length === 0) return null;
+  
+  // Find tasks that start after nowSec
+  const upcoming = s.items
+    .filter(it => (it.startMin * 60) > nowSec)
+    .sort((a, b) => a.startMin - b.startMin);
+    
+  if (upcoming.length > 0) {
+    const next = upcoming[0];
+    return { title: next.title, start: next.start };
+  } else {
+    // Loop back to the first task
+    // Since items are usually sorted by start time, we take the one with min startMin
+    const sortedAll = [...s.items].sort((a, b) => a.startMin - b.startMin);
+    if (sortedAll.length > 0) {
+      const first = sortedAll[0];
+      return { title: first.title, start: first.start };
+    }
+  }
+  return null;
+}
+
+let lastTaskKey = null;
+let lastTaskEndSec = null;
+
 function startTrayTimer() {
   stopTrayTimer();
   let scrollIdx = 0;
+  let lastNextTaskName = null;
   const tick = () => {
     const data = loadSchedules();
-    const task = getCurrentTask(data.runningId, data.schedules);
+    const now = new Date();
+    const nowSec = (now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds();
+    const task = getCurrentTask(data.runningId, data.schedules, nowSec);
+    const nextTask = getNextTask(data.runningId, data.schedules, nowSec);
+    
+    // Update Menu if next task changes
+    const nextTaskName = nextTask ? nextTask.title : null;
+    if (nextTaskName !== lastNextTaskName) {
+      updateTrayMenu(nextTaskName);
+      lastNextTaskName = nextTaskName;
+    }
+
+    const currentKey = task ? task.key : null;
+    
+    // Check if task started
+    if (currentKey && currentKey !== lastTaskKey) {
+       // New task started
+       // Only play if it's a "fresh" start (not resuming app in middle of task, though maybe we want that too?)
+       // For now, let's play sound whenever the current task changes to a valid task.
+       // However, we need to be careful not to double play if this is just the first tick.
+       // But lastTaskKey starts as null.
+       
+       // Use schedule config for soundStart
+       if (trayRendererWindow && task) trayRendererWindow.webContents.send('play-sound', task.soundStart);
+    }
+    
+    // Check if task ended
+    if (lastTaskKey && lastTaskKey !== currentKey) {
+       if (lastTaskEndSec !== null && nowSec >= lastTaskEndSec) {
+         // 获取刚才结束的任务
+         const s = data.schedules.find(x => x.id === data.runningId);
+         const endedTaskSound = s ? (s.soundEnd || s.sound || 'chime') : 'chime';
+         if (trayRendererWindow) trayRendererWindow.webContents.send('play-sound', endedTaskSound);
+       }
+    }
+
     if (task) {
       const timeStr = `${formatTime(task.remaining)} / ${formatTime(task.total)}`;
       let namePart = task.title;
@@ -153,8 +232,21 @@ function startTrayTimer() {
         namePart = (padded.slice(start) + padded).slice(0, 20);
       }
       updateTrayImage(namePart, timeStr, true);
+      lastTaskKey = task.key;
+      lastTaskEndSec = task.endSec;
     } else {
-      updateTrayImage('无任务', '', true);
+      // Show next task if available
+      if (nextTask) {
+        let namePart = nextTask.title;
+        if (nextTask.title.length > 20) {
+          namePart = nextTask.title.slice(0, 20); // No scroll for static next task to be simple, or reuse logic
+        }
+        updateTrayImage(namePart, nextTask.start, true);
+      } else {
+        updateTrayImage('无任务', '', true);
+      }
+      lastTaskKey = null;
+      lastTaskEndSec = null;
     }
   };
   tick();
@@ -232,7 +324,13 @@ app.whenReady().then(() => {
     } else {
       stopTrayTimer();
       updateTrayImage('无任务', '', true);
+      lastTaskKey = null;
+      lastTaskEndSec = null;
     }
+    return true;
+  });
+  ipcMain.handle('preview-sound', (e, soundId) => {
+    if (trayRendererWindow) trayRendererWindow.webContents.send('play-sound', soundId);
     return true;
   });
 

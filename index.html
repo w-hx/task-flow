@@ -20,9 +20,42 @@
     </aside>
     <main class="right-panel">
       <div id="create-panel" class="form-panel">
-        <h2>新建时间表</h2>
-        <label>时间表名称</label>
-        <input type="text" id="create-name" placeholder="输入时间表名称" maxlength="50">
+        <div class="form-row">
+          <div class="form-group">
+            <label>时间表名称</label>
+            <input type="text" id="create-name" placeholder="输入时间表名称" maxlength="50">
+          </div>
+          <div class="form-group small">
+            <label>开始提示音</label>
+            <select id="create-sound-start">
+              <option value="default">默认 (Beep)</option>
+              <option value="chime">Chime (风铃)</option>
+              <option value="success" selected>Success (成功)</option>
+              <option value="alert">Alert (警告)</option>
+              <option value="drop">Drop (下落)</option>
+              <option value="rise">Rise (上升)</option>
+              <option value="electronic">Electronic (电子)</option>
+              <option value="magic">Magic (魔法)</option>
+              <option value="doorbell">Doorbell (门铃)</option>
+              <option value="zap">Zap (激光)</option>
+            </select>
+          </div>
+          <div class="form-group small">
+            <label>结束提示音</label>
+            <select id="create-sound-end">
+              <option value="default">默认 (Beep)</option>
+              <option value="chime" selected>Chime (风铃)</option>
+              <option value="success">Success (成功)</option>
+              <option value="alert">Alert (警告)</option>
+              <option value="drop">Drop (下落)</option>
+              <option value="rise">Rise (上升)</option>
+              <option value="electronic">Electronic (电子)</option>
+              <option value="magic">Magic (魔法)</option>
+              <option value="doorbell">Doorbell (门铃)</option>
+              <option value="zap">Zap (激光)</option>
+            </select>
+          </div>
+        </div>
         <label>时间表内容</label>
         <textarea id="create-content" placeholder="粘贴时间表，格式：&#10;7:30-7:35 起床拿水壶出去&#10;7:35-7:40 刷牙、烧水、洗脸"></textarea>
         <div class="form-actions">
@@ -31,9 +64,42 @@
         <p id="create-error" class="error-msg"></p>
       </div>
       <div id="edit-panel" class="form-panel hidden">
-        <h2>编辑时间表</h2>
-        <label>时间表名称</label>
-        <input type="text" id="edit-name" placeholder="输入时间表名称" maxlength="50">
+        <div class="form-row">
+          <div class="form-group">
+            <label>时间表名称</label>
+            <input type="text" id="edit-name" placeholder="输入时间表名称" maxlength="50">
+          </div>
+          <div class="form-group small">
+            <label>开始提示音</label>
+            <select id="edit-sound-start">
+              <option value="default">默认 (Beep)</option>
+              <option value="chime">Chime (风铃)</option>
+              <option value="success">Success (成功)</option>
+              <option value="alert">Alert (警告)</option>
+              <option value="drop">Drop (下落)</option>
+              <option value="rise">Rise (上升)</option>
+              <option value="electronic">Electronic (电子)</option>
+              <option value="magic">Magic (魔法)</option>
+              <option value="doorbell">Doorbell (门铃)</option>
+              <option value="zap">Zap (激光)</option>
+            </select>
+          </div>
+          <div class="form-group small">
+            <label>结束提示音</label>
+            <select id="edit-sound-end">
+              <option value="default">默认 (Beep)</option>
+              <option value="chime">Chime (风铃)</option>
+              <option value="success">Success (成功)</option>
+              <option value="alert">Alert (警告)</option>
+              <option value="drop">Drop (下落)</option>
+              <option value="rise">Rise (上升)</option>
+              <option value="electronic">Electronic (电子)</option>
+              <option value="magic">Magic (魔法)</option>
+              <option value="doorbell">Doorbell (门铃)</option>
+              <option value="zap">Zap (激光)</option>
+            </select>
+          </div>
+        </div>
         <label>时间表内容</label>
         <textarea id="edit-content" placeholder="粘贴时间表"></textarea>
         <div class="form-actions">
