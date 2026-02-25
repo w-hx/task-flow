@@ -1,0 +1,24 @@
+{
+  "name": "task-flow",
+  "version": "1.0.0",
+  "description": "Mac OS 菜单栏时间表应用",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.taskflow.app",
+    "productName": "TaskFlow",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.png"
+    }
+  }
+}

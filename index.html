@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="left-panel">
+      <div class="left-header">
+        <span class="title">时间表</span>
+        <div class="header-actions">
+          <button id="btn-add" class="icon-btn" title="添加">+</button>
+          <button id="btn-delete-mode" class="icon-btn" title="删除" data-symbol="−">−</button>
+        </div>
+      </div>
+      <div class="card-list" id="card-list"></div>
+    </aside>
+    <main class="right-panel">
+      <div id="create-panel" class="form-panel">
+        <h2>新建时间表</h2>
+        <label>时间表名称</label>
+        <input type="text" id="create-name" placeholder="输入时间表名称" maxlength="50">
+        <label>时间表内容</label>
+        <textarea id="create-content" placeholder="粘贴时间表，格式：&#10;7:30-7:35 起床拿水壶出去&#10;7:35-7:40 刷牙、烧水、洗脸"></textarea>
+        <div class="form-actions">
+          <button id="create-save" class="btn-primary">保存</button>
+        </div>
+        <p id="create-error" class="error-msg"></p>
+      </div>
+      <div id="edit-panel" class="form-panel hidden">
+        <h2>编辑时间表</h2>
+        <label>时间表名称</label>
+        <input type="text" id="edit-name" placeholder="输入时间表名称" maxlength="50">
+        <label>时间表内容</label>
+        <textarea id="edit-content" placeholder="粘贴时间表"></textarea>
+        <div class="form-actions">
+          <button id="btn-run-toggle" class="btn-secondary hidden">开始运行</button>
+          <button id="edit-save" class="btn-primary">保存</button>
+        </div>
+        <p id="edit-error" class="error-msg"></p>
+      </div>
+    </main>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>
