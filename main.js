@@ -113,7 +113,23 @@ function updateTrayMenu(nextTaskName) {
   ];
 
   if (nextTaskName) {
-    template.unshift({ label: `下一个任务：${nextTaskName}`, enabled: false });
+    // Truncate next task name if too long to prevent tray menu from being too wide
+    const MENU_TASK_MAX_LEN = 13; // Reduced from 30 to 15 to keep menu width compact
+    let displayNext = nextTaskName;
+    if (displayNext.length > MENU_TASK_MAX_LEN) {
+      displayNext = displayNext.slice(0, MENU_TASK_MAX_LEN) + '...';
+    }
+    template.unshift({ label: `下一个任务：${displayNext}`, enabled: false });
+  }
+
+  // Removed padding logic as it was causing excessive width
+  // Standard menu width is fine
+  const mainPanelLabel = '主面板';
+
+  // Replace the original "Main Panel" item
+  const mainItemIndex = template.findIndex(i => i.label === '主面板');
+  if (mainItemIndex !== -1) {
+    template[mainItemIndex].label = mainPanelLabel;
   }
 
   const contextMenu = Menu.buildFromTemplate(template);
@@ -224,33 +240,47 @@ function startTrayTimer() {
     if (task) {
       const timeStr = `${formatTime(task.remaining)} / ${formatTime(task.total)}`;
       let namePart = task.title;
-      if (task.title.length > 20) {
-        scrollIdx = (scrollIdx + 1) % (task.title.length + 3);
-        const pad = '   ';
+      
+      // Scrolling logic restored but limited to 10 chars window
+      const SCROLL_WINDOW_SIZE = 10;
+      if (task.title.length > SCROLL_WINDOW_SIZE) {
+        // Use full-width spaces for padding to ensure consistent visual width
+        // '\u3000' is the Ideographic Space (full-width space)
+        const pad = '\u3000\u3000\u3000';
         const padded = task.title + pad;
-        const start = scrollIdx % padded.length;
-        namePart = (padded.slice(start) + padded).slice(0, 20);
+        
+        // Calculate total length needed to ensure we never run out of chars
+        const repeatCount = Math.ceil((padded.length + SCROLL_WINDOW_SIZE) / padded.length) + 1;
+        const longString = padded.repeat(repeatCount);
+        
+        scrollIdx = (scrollIdx + 1) % padded.length;
+        namePart = longString.slice(scrollIdx, scrollIdx + SCROLL_WINDOW_SIZE);
+      } else {
+         // Pad with spaces to keep width consistent if short? Or just leave it.
+         // namePart = task.title;
       }
-      updateTrayImage(namePart, timeStr, true);
+      
+      updateTrayImage(namePart, timeStr);
       lastTaskKey = task.key;
       lastTaskEndSec = task.endSec;
     } else {
       // Show next task if available
       if (nextTask) {
         let namePart = nextTask.title;
-        if (nextTask.title.length > 20) {
-          namePart = nextTask.title.slice(0, 20); // No scroll for static next task to be simple, or reuse logic
+        const SCROLL_WINDOW_SIZE = 10;
+        if (nextTask.title.length > SCROLL_WINDOW_SIZE) {
+           namePart = nextTask.title.slice(0, SCROLL_WINDOW_SIZE) + '...'; // Static truncation for next task to avoid distracting scroll when idle
         }
-        updateTrayImage(namePart, nextTask.start, true);
+        updateTrayImage(namePart, nextTask.start);
       } else {
-        updateTrayImage('无任务', '', true);
+        updateTrayImage('无任务', '');
       }
       lastTaskKey = null;
       lastTaskEndSec = null;
     }
   };
   tick();
-  trayTimer = setInterval(tick, 400);
+  trayTimer = setInterval(tick, 400); // Restore to 400ms for smooth scrolling
 }
 
 function stopTrayTimer() {
@@ -272,7 +302,10 @@ ipcMain.on('tray-image-ready', (e, dataUrl) => {
   if (tray && dataUrl) {
     const img = nativeImage.createFromDataURL(dataUrl);
     if (img && !img.isEmpty()) {
-      tray.setImage(img.resize({ width: 340, height: 44 }));
+      // Use the logical size we defined in tray-renderer.js
+      // tray-renderer.js w=260, h=22
+      // We resize to this logical size so it displays 1:1 on non-retina, and @2x on retina automatically handles it
+      tray.setImage(img.resize({ width: 260, height: 22 }));
     }
   }
 });

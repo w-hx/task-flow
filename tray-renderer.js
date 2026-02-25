@@ -1,30 +1,41 @@
 (function() {
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
-  const w = 520;
-  const h = 72;
+  
+  // Use logical pixel dimensions for consistency with macOS status bar
+  const w = 260; // Further reduced from 320 to 260 (since time moved left)
+  const h = 22;  // Standard macOS status bar height
+  
+  // HiDPI / Retina support
+  const dpr = window.devicePixelRatio || 2;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  ctx.scale(dpr, dpr);
 
-  const TASK_NAME_MAX_WIDTH = 400;
-  const SEPARATOR_X = 350;
+  const TASK_NAME_MAX_WIDTH = 180; // Increased from 140 to allow full display of 10 chars + spaces without squishing
+  const TIME_X = 170; // Position for time
 
   function renderTrayImage(taskNamePart, timePart) {
+    // Clear with transparent
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = 'transparent';
-    ctx.fillRect(0, 0, w, h);
-
+    
     ctx.fillStyle = '#ffffff';
-    ctx.font = '22px -apple-system, "PingFang SC", "Helvetica Neue", sans-serif';
+    // Use smaller font size appropriate for 22px height (macOS system font usually ~13-14px)
+    ctx.font = '14px -apple-system, "PingFang SC", "Helvetica Neue", sans-serif';
     ctx.textBaseline = 'middle';
 
-    const y = h / 2;
+    const y = h / 2 + 1; // Slight offset for visual centering
 
     if (taskNamePart) {
-      ctx.fillText(taskNamePart, 8, y, TASK_NAME_MAX_WIDTH);
+      // Just draw what main.js sends (which is exactly 10 chars, possibly including full-width spaces)
+      // We removed the max width constraint on fillText to prevent squishing.
+      // 10 full-width chars at 14px font is approx 140px. 180px is safe.
+      ctx.fillText(taskNamePart, 0, y); 
     }
+    
     if (timePart) {
-      ctx.fillText(timePart, SEPARATOR_X, y);
+      ctx.fillText(timePart, TIME_X, y);
     }
-
 
     const dataUrl = canvas.toDataURL('image/png');
     if (window.trayAPI) window.trayAPI.sendImage(dataUrl);
