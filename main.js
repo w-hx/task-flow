@@ -352,11 +352,18 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('parse-schedule', (e, text) => parseScheduleText(text));
   ipcMain.handle('set-running', (e, runningId) => {
+    // Save state to disk immediately when changed
+    const data = loadSchedules();
+    data.runningId = runningId;
+    saveSchedules(data);
+
     if (runningId) {
       startTrayTimer();
     } else {
       stopTrayTimer();
       updateTrayImage('无任务', '', true);
+      // Clear menu when stopped
+      updateTrayMenu(null);
       lastTaskKey = null;
       lastTaskEndSec = null;
     }
@@ -368,7 +375,21 @@ app.whenReady().then(() => {
   });
 
   const initial = loadSchedules();
-  if (initial.runningId) startTrayTimer();
+  // Ensure we don't auto-start
+  if (initial.runningId) {
+     initial.runningId = null;
+     saveSchedules(initial);
+  }
+  // if (initial.runningId) startTrayTimer(); // Disabled auto-start
+});
+
+app.on('before-quit', () => {
+  // Clear running state on quit
+  const data = loadSchedules();
+  if (data.runningId) {
+    data.runningId = null;
+    saveSchedules(data);
+  }
 });
 
 app.on('window-all-closed', () => {
