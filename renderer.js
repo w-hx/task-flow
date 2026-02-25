@@ -28,6 +28,113 @@ const editSave = document.getElementById('edit-save');
 const editError = document.getElementById('edit-error');
 const btnRunToggle = document.getElementById('btn-run-toggle');
 
+// Custom Select Implementation
+function setupCustomSelects() {
+  const selects = document.querySelectorAll('select');
+  selects.forEach(select => {
+    // Check if already custom
+    if (select.nextElementSibling && select.nextElementSibling.classList.contains('custom-select-wrapper')) {
+      return;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'custom-select-wrapper';
+    
+    const trigger = document.createElement('div');
+    trigger.className = 'custom-select-trigger';
+    trigger.innerHTML = `
+      <span>${select.options[select.selectedIndex].text}</span>
+      <div class="arrow"></div>
+    `;
+    
+    const optionsList = document.createElement('div');
+    optionsList.className = 'custom-options';
+    
+    Array.from(select.options).forEach(option => {
+      const customOption = document.createElement('div');
+      customOption.className = 'custom-option' + (option.selected ? ' selected' : '');
+      customOption.dataset.value = option.value;
+      customOption.textContent = option.text;
+      
+      customOption.addEventListener('click', (e) => {
+        e.stopPropagation();
+        select.value = option.value;
+        trigger.querySelector('span').textContent = option.text;
+        
+        // Update selected class
+        optionsList.querySelectorAll('.custom-option').forEach(opt => opt.classList.remove('selected'));
+        customOption.classList.add('selected');
+        
+        wrapper.classList.remove('open');
+        
+        // Trigger change event for listeners (like preview sound)
+        const event = new Event('change');
+        select.dispatchEvent(event);
+      });
+      
+      optionsList.appendChild(customOption);
+    });
+    
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Close other selects
+      document.querySelectorAll('.custom-select-wrapper.open').forEach(el => {
+        if (el !== wrapper) el.classList.remove('open');
+      });
+      wrapper.classList.toggle('open');
+    });
+    
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(optionsList);
+    
+    select.style.display = 'none'; // Hide native select
+    select.parentNode.insertBefore(wrapper, select.nextSibling);
+    
+    // Listen for external changes to select (e.g. programmatic update)
+    const observer = new MutationObserver(() => {
+        trigger.querySelector('span').textContent = select.options[select.selectedIndex].text;
+        optionsList.querySelectorAll('.custom-option').forEach(opt => {
+            if (opt.dataset.value === select.value) {
+                opt.classList.add('selected');
+            } else {
+                opt.classList.remove('selected');
+            }
+        });
+    });
+    observer.observe(select, { attributes: true, childList: true, subtree: true });
+    
+    // Manual sync helper for value property setting
+    select.addEventListener('change', () => {
+         trigger.querySelector('span').textContent = select.options[select.selectedIndex].text;
+         optionsList.querySelectorAll('.custom-option').forEach(opt => {
+             opt.classList.toggle('selected', opt.dataset.value === select.value);
+         });
+    });
+  });
+  
+  // Close on click outside
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.custom-select-wrapper.open').forEach(el => {
+      el.classList.remove('open');
+    });
+  });
+}
+
+function updateCustomSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const wrapper = select.nextElementSibling;
+    if (wrapper && wrapper.classList.contains('custom-select-wrapper')) {
+        const trigger = wrapper.querySelector('.custom-select-trigger span');
+        const options = wrapper.querySelectorAll('.custom-option');
+        
+        trigger.textContent = select.options[select.selectedIndex].text;
+        options.forEach(opt => {
+            opt.classList.toggle('selected', opt.dataset.value === select.value);
+        });
+    }
+}
+
 
 function loadData() {
   return window.taskFlowAPI.getSchedules().then((data) => {
@@ -85,6 +192,17 @@ function renderCards() {
       }
     });
     
+    // Add ripple effect or active scale
+    card.addEventListener('mousedown', () => {
+      card.style.transform = 'scale(0.98)';
+    });
+    card.addEventListener('mouseup', () => {
+      card.style.transform = '';
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = '';
+    });
+
     const delBtn = card.querySelector('.card-delete-btn');
     if (delBtn) {
       delBtn.addEventListener('click', (e) => {
@@ -101,7 +219,7 @@ function renderCards() {
   
   if (isDeleteMode) {
     cardList.classList.add('delete-mode');
-    btnDeleteMode.textContent = '←';
+    btnDeleteMode.textContent = '✔';
     btnDeleteMode.title = '返回';
     btnDeleteMode.classList.add('return');
     btnDeleteMode.classList.remove('highlight');
@@ -140,6 +258,11 @@ function showCreatePanel() {
   createSoundStart.value = 'success';
   createSoundEnd.value = 'chime';
   createError.textContent = '';
+  
+  // Update custom selects for create panel
+  updateCustomSelect('create-sound-start');
+  updateCustomSelect('create-sound-end');
+  
   renderCards();
 }
 
@@ -159,6 +282,10 @@ function showEditPanel(id) {
     editContent.value = (s.items || [])
       .map((it) => `${it.start}-${it.end} ${it.title}`)
       .join('\n');
+    
+    // Update custom selects
+    updateCustomSelect('edit-sound-start');
+    updateCustomSelect('edit-sound-end');
   }
   editError.textContent = '';
   updateEditRunButton();
@@ -343,4 +470,5 @@ loadData().then(() => {
   showRightPanel();
   renderCards();
   window.taskFlowAPI.setRunning(state.runningId);
+  setupCustomSelects(); // Initialize custom selects
 });
