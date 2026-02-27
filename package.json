@@ -14,8 +14,8 @@
     "electron-builder": "^24.9.1"
   },
   "build": {
-    "appId": "com.taskflow.app",
-    "productName": "TaskFlow",
+    "appId": "com.流时.app",
+    "productName": "流时",
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "assets/icon.png"

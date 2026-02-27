@@ -98,7 +98,7 @@ function createTray() {
     icon = nativeImage.createFromPath(iconPath);
   }
   tray = new Tray(icon.resize({ width: 22, height: 22 }));
-  tray.setToolTip('TaskFlow');
+  tray.setToolTip('流时');
   updateTrayMenu();
   tray.on('click', () => {
     tray.popUpContextMenu();
