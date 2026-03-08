@@ -52,7 +52,7 @@
       osc.type = 'sine';
       osc.frequency.setValueAtTime(880, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.setValueAtTime(0.6, ctx.currentTime); // 0.3 -> 0.6
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
       osc.start();
       osc.stop(ctx.currentTime + 0.5);
@@ -66,7 +66,7 @@
       osc.type = 'sine';
       osc.frequency.setValueAtTime(1200, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 1.2);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime); // 0.2 -> 0.4
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.2);
       osc.start();
       osc.stop(ctx.currentTime + 1.2);
@@ -81,7 +81,7 @@
         gain.connect(ctx.destination);
         osc.type = 'sine';
         osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.1, now + i * 0.1);
+        gain.gain.setValueAtTime(0.2, now + i * 0.1); // 0.1 -> 0.2
         gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.4);
         osc.start(now + i * 0.1);
         osc.stop(now + i * 0.1 + 0.4);
@@ -97,7 +97,7 @@
       osc.frequency.setValueAtTime(400, ctx.currentTime);
       osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 0.1);
       osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + 0.2);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime); // 0.15 -> 0.3
       gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.2);
       osc.start();
       osc.stop(ctx.currentTime + 0.2);
@@ -111,7 +111,7 @@
       osc.type = 'sine';
       osc.frequency.setValueAtTime(1000, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.4);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime); // 0.2 -> 0.4
       gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.4);
       osc.start();
       osc.stop(ctx.currentTime + 0.4);
@@ -125,9 +125,9 @@
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(200, ctx.currentTime);
       osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.01, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.2);
-      gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.02, ctx.currentTime); // 0.01 -> 0.02
+      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.2); // 0.2 -> 0.4
+      gain.gain.linearRampToValueAtTime(0.02, ctx.currentTime + 0.3); // 0.01 -> 0.02
       osc.start();
       osc.stop(ctx.currentTime + 0.3);
     },
@@ -140,8 +140,8 @@
       osc.type = 'square';
       osc.frequency.setValueAtTime(600, ctx.currentTime);
       osc.frequency.setValueAtTime(800, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.setValueAtTime(0.01, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime); // 0.1 -> 0.2
+      gain.gain.setValueAtTime(0.02, ctx.currentTime + 0.2); // 0.01 -> 0.02
       osc.start();
       osc.stop(ctx.currentTime + 0.2);
     },
@@ -155,8 +155,8 @@
         gain.connect(ctx.destination);
         osc.type = 'sine';
         osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.05, now + i * 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.5);
+        gain.gain.setValueAtTime(0.1, now + i * 0.05); // 0.05 -> 0.1
+        gain.gain.exponentialRampToValueAtTime(0.002, now + i * 0.05 + 0.5); // 0.001 -> 0.002
         osc.start(now + i * 0.05);
         osc.stop(now + i * 0.05 + 0.5);
       });
@@ -171,8 +171,8 @@
       gain.connect(ctx.destination);
       osc.type = 'sine';
       osc.frequency.value = 660; // E5
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 1.0);
+      gain.gain.setValueAtTime(0.4, now); // 0.2 -> 0.4
+      gain.gain.exponentialRampToValueAtTime(0.02, now + 1.0); // 0.01 -> 0.02
       osc.start(now);
       osc.stop(now + 1.0);
       // Dong
@@ -182,8 +182,8 @@
       gain.connect(ctx.destination);
       osc.type = 'sine';
       osc.frequency.value = 523.25; // C5
-      gain.gain.setValueAtTime(0.2, now + 0.8);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 2.0);
+      gain.gain.setValueAtTime(0.4, now + 0.8); // 0.2 -> 0.4
+      gain.gain.exponentialRampToValueAtTime(0.02, now + 2.0); // 0.01 -> 0.02
       osc.start(now + 0.8);
       osc.stop(now + 2.0);
     },
@@ -196,8 +196,8 @@
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(1200, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime); // 0.1 -> 0.2
+      gain.gain.linearRampToValueAtTime(0.02, ctx.currentTime + 0.15); // 0.01 -> 0.02
       osc.start();
       osc.stop(ctx.currentTime + 0.15);
     }
