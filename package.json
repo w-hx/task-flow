@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --mac"
+    "dist": "electron-builder"
   },
   "author": "",
   "license": "MIT",
@@ -14,11 +14,41 @@
     "electron-builder": "^24.9.1"
   },
   "build": {
-    "appId": "com.流时.app",
-    "productName": "流时",
+    "appId": "com.taskflow.app",
+    "productName": "TaskFlow",
+    "files": [
+      "**/*",
+      "!dist/**/*",
+      "!**/*.ts",
+      "!*.map",
+      "!package-lock.json"
+    ],
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "assets/icon.png"
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/icon.png",
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "directories": {
+      "output": "dist"
     }
   }
 }

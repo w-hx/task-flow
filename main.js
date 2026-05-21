@@ -12,6 +12,10 @@ const MAX_SCHEDULES = 10;
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
+if (process.platform === 'darwin' && app.dock) {
+  app.dock.hide();
+}
+
 // 确保数据目录存在
 function ensureDataDir() {
   const dir = path.dirname(DATA_PATH);
