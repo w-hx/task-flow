@@ -61,22 +61,16 @@ function saveSchedules(data) {
 
 // 解析时间表格式 "7:30-7:35 任务内容"，返回 { items, error }
 function parseScheduleText(text) {
-  const rawLines = text.split('\n');
-  const lines = [];
-  rawLines.forEach((line, i) => {
-    if (line.trim()) {
-      lines.push({ raw: line, content: line.trim(), lineNo: i + 1 });
-    }
-  });
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
   const items = [];
   const regex = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\s+(.+)$/;
 
-  for (const entry of lines) {
-    const m = entry.content.match(regex);
+  for (const content of lines) {
+    const m = content.match(regex);
     if (!m) {
       return {
         items: null,
-        error: `第 ${entry.lineNo} 行格式错误：应为 "HH:MM-HH:MM 任务内容"，实际内容：${entry.content}`
+        error: `格式错误：应为 "HH:MM-HH:MM 任务内容"，错误行：${content}`
       };
     }
     const startH = parseInt(m[1], 10);
@@ -86,7 +80,7 @@ function parseScheduleText(text) {
     if (startH > 23 || startM > 59 || endH > 23 || endM > 59) {
       return {
         items: null,
-        error: `第 ${entry.lineNo} 行时间范围无效（小时 0-23，分钟 0-59）：${entry.content}`
+        error: `时间范围无效（小时 0-23，分钟 0-59），错误行：${content}`
       };
     }
     const startMin = startH * 60 + startM;
@@ -94,7 +88,7 @@ function parseScheduleText(text) {
     if (endMin <= startMin) {
       return {
         items: null,
-        error: `第 ${entry.lineNo} 行结束时间必须大于开始时间：${entry.content}`
+        error: `结束时间必须大于开始时间，错误行：${content}`
       };
     }
     items.push({
@@ -103,8 +97,7 @@ function parseScheduleText(text) {
       start: m[1] + ':' + m[2],
       end: m[3] + ':' + m[4],
       title: m[5].trim(),
-      durationMin: endMin - startMin,
-      lineNo: entry.lineNo
+      durationMin: endMin - startMin
     });
   }
   if (items.length === 0) return { items: null, error: '至少需要一行有效任务' };
@@ -113,14 +106,14 @@ function parseScheduleText(text) {
   const sorted = [...items].sort((a, b) => a.startMin - b.startMin);
   for (let i = 1; i < sorted.length; i++) {
     if (sorted[i].startMin < sorted[i - 1].endMin) {
+      const a = sorted[i - 1];
+      const b = sorted[i];
       return {
         items: null,
-        error: `时间重叠：第 ${sorted[i - 1].lineNo} 行「${sorted[i - 1].title}」与第 ${sorted[i].lineNo} 行「${sorted[i].title}」`
+        error: `时间重叠：「${a.start}-${a.end} ${a.title}」与「${b.start}-${b.end} ${b.title}」`
       };
     }
   }
-  // 清理 lineNo 字段，避免写入存储
-  items.forEach(it => { delete it.lineNo; });
   return { items, error: null };
 }
 
