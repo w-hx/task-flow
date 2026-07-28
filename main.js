@@ -6,6 +6,7 @@ let tray = null;
 let mainWindow = null;
 let trayRendererWindow = null;
 let trayTimer = null;
+let availableVoices = { zh: [], all: [] };
 
 const DATA_PATH = path.join(app.getPath('userData'), 'schedules.json');
 const MAX_SCHEDULES = 10;
@@ -24,12 +25,27 @@ function ensureDataDir() {
   }
 }
 
+function applyScheduleDefaults(s) {
+  if (!s) return s;
+  return {
+    ...s,
+    soundStart: s.soundStart || 'success',
+    soundEnd: s.soundEnd || s.sound || 'chime',
+    speakEnabled: s.speakEnabled === true,
+    speakVoice: s.speakVoice || '',
+    speakRate: typeof s.speakRate === 'number' ? s.speakRate : 1.0,
+    speakVolume: typeof s.speakVolume === 'number' ? s.speakVolume : 1.0
+  };
+}
+
 // 读取时间表数据
 function loadSchedules() {
   try {
     if (fs.existsSync(DATA_PATH)) {
       const data = fs.readFileSync(DATA_PATH, 'utf-8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      parsed.schedules = (parsed.schedules || []).map(applyScheduleDefaults);
+      return parsed;
     }
   } catch (e) {
     console.error('Load schedules error:', e);
@@ -146,6 +162,39 @@ function formatTime(sec) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+const CN_DIGITS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+function cnHour(h) {
+  if (h === 0) return '零点';
+  if (h === 10) return '十点';
+  if (h < 10) return CN_DIGITS[h] + '点';
+  if (h < 20) return '十' + CN_DIGITS[h - 10] + '点';
+  if (h === 20) return '二十点';
+  const tens = Math.floor(h / 10);
+  const ones = h % 10;
+  return CN_DIGITS[tens] + '十' + (ones === 0 ? '点' : CN_DIGITS[ones] + '点');
+}
+
+function cnMin(m) {
+  if (m === 0) return '';
+  if (m === 10) return '十分';
+  if (m < 10) return CN_DIGITS[m] + '分';
+  if (m < 20) return '十' + CN_DIGITS[m - 10] + '分';
+  const tens = Math.floor(m / 10);
+  const ones = m % 10;
+  return CN_DIGITS[tens] + '十' + (ones === 0 ? '分' : CN_DIGITS[ones] + '分');
+}
+
+function cnTimeRange(startMin, endMin) {
+  const sh = Math.floor(startMin / 60);
+  const sm = startMin % 60;
+  const eh = Math.floor(endMin / 60);
+  const em = endMin % 60;
+  const sc = cnHour(sh) + cnMin(sm);
+  const ec = cnHour(eh) + cnMin(em);
+  return sc + '到' + ec;
+}
+
 function getCurrentTask(runningId, schedules, nowSec) {
   if (!runningId) return null;
   const s = schedules.find((x) => x.id === runningId);
@@ -159,6 +208,9 @@ function getCurrentTask(runningId, schedules, nowSec) {
       const key = `${it.startMin}-${it.endMin}-${it.title}`;
       return { 
         title: '『' + it.title + '』', 
+        rawTitle: it.title,
+        startMin: it.startMin,
+        endMin: it.endMin,
         remaining, 
         total: totalSec, 
         key, 
@@ -221,14 +273,22 @@ function startTrayTimer() {
     
     // Check if task started
     if (currentKey && currentKey !== lastTaskKey) {
-       // New task started
-       // Only play if it's a "fresh" start (not resuming app in middle of task, though maybe we want that too?)
-       // For now, let's play sound whenever the current task changes to a valid task.
-       // However, we need to be careful not to double play if this is just the first tick.
-       // But lastTaskKey starts as null.
-       
-       // Use schedule config for soundStart
-       if (trayRendererWindow && task) trayRendererWindow.webContents.send('play-sound', task.soundStart);
+       if (trayRendererWindow && task) {
+         trayRendererWindow.webContents.send('play-sound', task.soundStart);
+         const sched = data.schedules.find((x) => x.id === data.runningId);
+         if (sched && sched.speakEnabled) {
+           const timeStr = cnTimeRange(task.startMin, task.endMin);
+           const speakText = timeStr + '，' + (task.rawTitle || '') + '。';
+           trayRendererWindow.webContents.send('speak-text', {
+             text: speakText,
+             voiceName: sched.speakVoice,
+             rate: sched.speakRate,
+             volume: sched.speakVolume,
+             lang: 'zh-CN',
+             afterSoundId: task.soundStart
+           });
+         }
+       }
     }
     
     // Check if task ended
@@ -348,6 +408,11 @@ app.whenReady().then(() => {
   createMainWindow();
   mainWindow.hide();
 
+  // Tray renderer sends available voices list once
+  ipcMain.on('voices-ready', (e, voices) => {
+    if (voices) availableVoices = voices;
+  });
+
   // IPC handlers
   ipcMain.handle('get-schedules', () => loadSchedules());
   ipcMain.handle('save-schedules', (e, data) => {
@@ -355,6 +420,7 @@ app.whenReady().then(() => {
     return true;
   });
   ipcMain.handle('parse-schedule', (e, text) => parseScheduleText(text));
+  ipcMain.handle('get-voices', () => availableVoices);
   ipcMain.handle('set-running', (e, runningId) => {
     // Save state to disk immediately when changed
     const data = loadSchedules();
@@ -370,11 +436,25 @@ app.whenReady().then(() => {
       updateTrayMenu(null);
       lastTaskKey = null;
       lastTaskEndSec = null;
+      if (trayRendererWindow) trayRendererWindow.webContents.send('speak-text', { cancel: true });
     }
     return true;
   });
   ipcMain.handle('preview-sound', (e, soundId) => {
     if (trayRendererWindow) trayRendererWindow.webContents.send('play-sound', soundId);
+    return true;
+  });
+  ipcMain.handle('preview-speak', (e, payload) => {
+    if (trayRendererWindow && payload && payload.text) {
+      trayRendererWindow.webContents.send('speak-text', {
+        text: payload.text,
+        voiceName: payload.voiceName || '',
+        rate: typeof payload.rate === 'number' ? payload.rate : 1.0,
+        volume: typeof payload.volume === 'number' ? payload.volume : 1.0,
+        lang: 'zh-CN',
+        preview: true
+      });
+    }
     return true;
   });
 

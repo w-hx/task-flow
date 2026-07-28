@@ -5,5 +5,7 @@ contextBridge.exposeInMainWorld('taskFlowAPI', {
   saveSchedules: (data) => ipcRenderer.invoke('save-schedules', data),
   parseSchedule: (text) => ipcRenderer.invoke('parse-schedule', text),
   setRunning: (id) => ipcRenderer.invoke('set-running', id),
-  previewSound: (soundId) => ipcRenderer.invoke('preview-sound', soundId)
+  previewSound: (soundId) => ipcRenderer.invoke('preview-sound', soundId),
+  getVoices: () => ipcRenderer.invoke('get-voices'),
+  previewSpeak: (payload) => ipcRenderer.invoke('preview-speak', payload)
 });

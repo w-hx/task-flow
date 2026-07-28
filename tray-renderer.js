@@ -203,6 +203,41 @@
     }
   };
 
+  let availableVoices = [];
+  let voicesSent = false;
+
+  function listVoices() {
+    const synth = window.speechSynthesis;
+    if (!synth) return [];
+    const all = synth.getVoices();
+    const zhVoices = all.filter(v => /zh(-|_)?/i.test(v.lang));
+    const others = all.filter(v => !/zh(-|_)?/i.test(v.lang));
+    return {
+      zh: zhVoices.map(v => ({ name: v.name, lang: v.lang, default: v.default })),
+      all: all.map(v => ({ name: v.name, lang: v.lang, default: v.default }))
+    };
+  }
+
+  function sendVoicesIfReady() {
+    const synth = window.speechSynthesis;
+    if (!synth || !window.trayAPI) return;
+    const voices = listVoices();
+    if (voices.all.length > 0 && !voicesSent) {
+      window.trayAPI.sendVoices(voices);
+      voicesSent = true;
+    }
+  }
+
+  (function initVoices() {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    sendVoicesIfReady();
+    synth.onvoiceschanged = () => {
+      voicesSent = false;
+      sendVoicesIfReady();
+    };
+  })();
+
   function playSound(soundId) {
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -216,6 +251,54 @@
     }
   }
 
+  function getEstimatedSoundDuration(soundId) {
+    const durations = {
+      'default': 500,
+      'chime': 1200,
+      'success': 500,
+      'alert': 200,
+      'drop': 400,
+      'rise': 300,
+      'electronic': 200,
+      'magic': 600,
+      'doorbell': 2000,
+      'zap': 150
+    };
+    return durations[soundId] != null ? durations[soundId] : 400;
+  }
+
+  function speakText(data) {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    if (!data || !data.text) return;
+
+    synth.cancel();
+
+    const utter = new SpeechSynthesisUtterance(data.text);
+    if (data.voiceName) {
+      const allVoices = synth.getVoices();
+      const match = allVoices.find(v => v.name === data.voiceName);
+      if (match) utter.voice = match;
+    }
+    if (typeof data.rate === 'number') utter.rate = data.rate;
+    if (typeof data.pitch === 'number') utter.pitch = data.pitch;
+    if (typeof data.volume === 'number') utter.volume = data.volume;
+    utter.lang = data.lang || 'zh-CN';
+
+    synth.speak(utter);
+  }
+
+  let speakQueueTimer = null;
+
+  function scheduleSpeakAfterSound(soundId, speakData) {
+    if (!speakData || !speakData.text) return;
+    const delay = getEstimatedSoundDuration(soundId);
+    if (speakQueueTimer) clearTimeout(speakQueueTimer);
+    speakQueueTimer = setTimeout(() => {
+      speakText(speakData);
+    }, delay + 150);
+  }
+
   if (window.trayAPI) {
     window.trayAPI.onRenderRequest((data) => {
       renderTrayImage(
@@ -225,6 +308,24 @@
     });
     window.trayAPI.onPlaySound((soundId) => {
       playSound(soundId);
+    });
+    window.trayAPI.onSpeakText((data) => {
+      const synth = window.speechSynthesis;
+      if (data && data.cancel && synth) {
+        synth.cancel();
+        if (speakQueueTimer) {
+          clearTimeout(scheduleSpeakTimer);
+          speakQueueTimer = null;
+        }
+        return;
+      }
+      if (data.preview) {
+        speakText(data);
+      } else if (data.afterSoundId) {
+        scheduleSpeakAfterSound(data.afterSoundId, data);
+      } else {
+        speakText(data);
+      }
     });
   }
 })();

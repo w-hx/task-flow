@@ -56,6 +56,22 @@
             </select>
           </div>
         </div>
+        <div class="form-row speak-config-row">
+          <div class="form-group small">
+            <label>语音朗读</label>
+            <select id="create-speak-voice">
+              <option value="__none__">无</option>
+              <option value="">系统默认</option>
+            </select>
+          </div>
+          <div class="form-group rate-group">
+            <label>语速 <span class="rate-value" id="create-rate-value">1.0x</span></label>
+            <div class="rate-row">
+              <input type="range" id="create-speak-rate" min="0.5" max="2" step="0.1" value="1">
+              <button type="button" class="btn-preview" id="create-preview-speak" title="试听">试听</button>
+            </div>
+          </div>
+        </div>
         <label>时间表内容</label>
         <textarea id="create-content" placeholder="粘贴时间表，格式：&#10;7:30-7:35 起床拿水壶出去&#10;7:35-7:40 刷牙、烧水、洗脸"></textarea>
         <div class="form-actions">
@@ -98,6 +114,22 @@
               <option value="doorbell">Doorbell (门铃)</option>
               <option value="zap">Zap (激光)</option>
             </select>
+          </div>
+        </div>
+        <div class="form-row speak-config-row">
+          <div class="form-group small">
+            <label>语音朗读</label>
+            <select id="edit-speak-voice">
+              <option value="__none__">无</option>
+              <option value="">系统默认</option>
+            </select>
+          </div>
+          <div class="form-group rate-group">
+            <label>语速 <span class="rate-value" id="edit-rate-value">1.0x</span></label>
+            <div class="rate-row">
+              <input type="range" id="edit-speak-rate" min="0.5" max="2" step="0.1" value="1">
+              <button type="button" class="btn-preview" id="edit-preview-speak" title="试听">试听</button>
+            </div>
           </div>
         </div>
         <label>时间表内容</label>

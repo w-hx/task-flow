@@ -482,3 +482,59 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(107, 114, 128, 0.8);
 }
+
+/* --- Speak Config --- */
+.rate-group {
+  flex: 1;
+  min-width: 300px;
+}
+.rate-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rate-value {
+  color: var(--secondary);
+  font-weight: 700;
+  margin-left: 4px;
+}
+.form-panel input[type="range"] {
+  flex: 1;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  accent-color: var(--secondary);
+  height: 24px;
+  cursor: pointer;
+}
+.btn-preview {
+  padding: 10px 14px;
+  background: var(--bg-app);
+  color: var(--text-main);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-clay-btn);
+  transition: all 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.btn-preview:hover {
+  transform: translateY(-2px);
+  background: #fff;
+  color: var(--secondary);
+}
+.btn-preview:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: var(--shadow-clay-pressed);
+}
+.speak-config-row {
+  align-items: flex-end;
+}
+.speak-config-row .form-group.small {
+  flex: 0 0 180px;
+  width: 180px;
+}
