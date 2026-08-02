@@ -16,3 +16,4 @@ pnpm-debug.log*
 .cache/
 .electron/
 .eslintcache
+.trae/
