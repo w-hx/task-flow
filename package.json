@@ -21,7 +21,8 @@
       "!dist/**/*",
       "!**/*.ts",
       "!*.map",
-      "!package-lock.json"
+      "!package-lock.json",
+      "!.trae/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
