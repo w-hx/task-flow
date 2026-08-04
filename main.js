@@ -8,7 +8,10 @@ let trayRendererWindow = null;
 let trayTimer = null;
 let availableVoices = { zh: [], all: [] };
 
-const DATA_PATH = path.join(app.getPath('userData'), 'schedules.json');
+// 开发环境(npm start)数据存项目内 dev-data/，生产环境(打包安装)数据存系统用户目录
+const DATA_PATH = app.isPackaged
+  ? path.join(app.getPath('userData'), 'schedules.json')
+  : path.join(__dirname, 'dev-data', 'schedules.json');
 const MAX_SCHEDULES = 10;
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
