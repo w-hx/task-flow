@@ -5,13 +5,19 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^26.1.2",
     "electron": "^28.3.3",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   },
   "build": {
     "appId": "com.taskflow.app",
