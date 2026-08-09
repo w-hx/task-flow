@@ -11,7 +11,7 @@ let availableVoices = { zh: [], all: [] };
 // 开发环境(npm start)数据存项目内 dev-data/，生产环境(打包安装)数据存系统用户目录
 const DATA_PATH = app.isPackaged
   ? path.join(app.getPath('userData'), 'schedules.json')
-  : path.join(__dirname, 'dev-data', 'schedules.json');
+  : path.join(process.cwd(), 'dev-data', 'schedules.json')
 const MAX_SCHEDULES = 10;
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -128,10 +128,17 @@ function createTrayRendererWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'tray-preload.js')
+      preload: path.join(__dirname, '../preload/tray.js')
     }
   });
-  trayRendererWindow.loadFile(path.join(__dirname, 'tray-renderer.html'));
+  // 开发时，Electron 加载 Vite 的本地开发地址；生产时，加载构建后的 HTML 文件。这是 electron-vite 官方推荐的 HMR 接入方式。
+  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
+    trayRendererWindow.loadURL(
+      `${process.env.ELECTRON_RENDERER_URL}/tray.html`
+    )
+  } else {
+    trayRendererWindow.loadFile(path.join(__dirname, '../renderer/tray.html'))
+  }
   trayRendererWindow.setMenuBarVisibility(false);
   trayRendererWindow.on('closed', () => { trayRendererWindow = null; });
   trayRendererWindow.webContents.once('did-finish-load', () => {
@@ -140,7 +147,7 @@ function createTrayRendererWindow() {
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  const iconPath = path.join(__dirname, '../../assets/icon.png');
   let icon = nativeImage.createEmpty();
   if (fs.existsSync(iconPath)) {
     icon = nativeImage.createFromPath(iconPath);
@@ -421,10 +428,14 @@ function createMainWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, '../preload/index.js')
     }
   });
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
+    mainWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html`)
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+  }
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('closed', () => { mainWindow = null; });
 }

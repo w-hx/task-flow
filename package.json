@@ -2,10 +2,12 @@
   "name": "task-flow",
   "version": "1.0.0",
   "description": "Mac OS 菜单栏时间表应用",
-  "main": "main.js",
+  "main": "./out/main/index.js",
   "scripts": {
-    "start": "electron .",
-    "dist": "electron-builder",
+    "dev": "electron-vite dev --watch",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "npm run build && electron-builder",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
@@ -16,6 +18,7 @@
     "@types/node": "^26.1.2",
     "electron": "^28.3.3",
     "electron-builder": "^24.9.1",
+    "electron-vite": "^5.0.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
@@ -23,12 +26,17 @@
     "appId": "com.taskflow.app",
     "productName": "TaskFlow",
     "files": [
-      "**/*",
-      "!dist/**/*",
-      "!**/*.ts",
-      "!*.map",
-      "!package-lock.json",
-      "!.trae/**/*"
+      "package.json",
+      {
+        "from": "out",
+        "to": "out",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "assets",
+        "to": "assets",
+        "filter": ["**/*"]
+      }
     ],
     "mac": {
       "category": "public.app-category.productivity",
