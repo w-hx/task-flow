@@ -1,6 +1,8 @@
 const { app, Tray, Menu, BrowserWindow, ipcMain, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+// 开发态注入 React DevTools（仅 dev 使用；打包后不引入，避免把扩展打包进生产）
+const { installExtension, REACT_DEVELOPER_TOOLS } = require('electron-devtools-installer');
 
 let tray = null;
 let mainWindow = null;
@@ -438,9 +440,23 @@ function createMainWindow() {
   }
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('closed', () => { mainWindow = null; });
+  // 开发态自动打开 DevTools，方便查看 React 组件树（不需要可删掉这段）
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // 仅在开发环境安装 React DevTools 扩展（默认会话 session，主窗口与托盘窗口共用）
+  if (!app.isPackaged) {
+    try {
+      await installExtension(REACT_DEVELOPER_TOOLS);
+      console.log('[devtools] React Developer Tools 已注入');
+    } catch (err) {
+      console.error('[devtools] React Developer Tools 安装失败:', err);
+    }
+  }
+
   ensureDataDir();
   createTrayRendererWindow();
   createTray();

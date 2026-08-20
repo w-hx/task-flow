@@ -21,6 +21,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^28.3.3",
     "electron-builder": "^24.9.1",
+    "electron-devtools-installer": "^4.0.0",
     "electron-vite": "^5.0.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
