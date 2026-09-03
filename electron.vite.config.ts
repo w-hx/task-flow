@@ -3,14 +3,22 @@ import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  main: {},
+  main: {
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/main/index.ts')
+        }
+      }
+    }
+  },
 
   preload: {
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/preload/index.js'),
-          tray: resolve(__dirname, 'src/preload/tray.js')
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          tray: resolve(__dirname, 'src/preload/tray.ts')
         }
       }
     }

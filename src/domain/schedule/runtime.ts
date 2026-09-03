@@ -6,7 +6,7 @@ import { Schedule, TaskForTray, NextTask } from "../types";
  * @param nowSec 当前时间的秒数（从当天0点开始计算）
  * @returns 符合托盘计时器要求的任务对象，若没有正在执行的任务则返回null
  */
-export const getCurrentTask = (runningId: string, schedules: Schedule[], nowSec: number): TaskForTray | null => {
+export const getCurrentTask = (runningId: string | null, schedules: Schedule[], nowSec: number): TaskForTray | null => {
   if (!runningId) return null;
   const s = schedules.find((x) => x.id === runningId);
   if (!s || !s.items || s.items.length === 0) return null;
@@ -41,7 +41,7 @@ export const getCurrentTask = (runningId: string, schedules: Schedule[], nowSec:
  * @param nowSec 当前时间的秒数（从当天0点开始计算）
  * @returns 下一个要执行的任务对象，若没有找到则返回null
  */
-export const getNextTask = (runningId: string, schedules: Schedule[], nowSec: number): NextTask | null => {
+export const getNextTask = (runningId: string | null, schedules: Schedule[], nowSec: number): NextTask | null => {
   if (!runningId) return null;
   const s = schedules.find((x) => x.id === runningId);
   if (!s || !s.items || s.items.length === 0) return null;

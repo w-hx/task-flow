@@ -1,14 +1,20 @@
-const { app, Tray, Menu, BrowserWindow, ipcMain, nativeImage } = require('electron');
-const path = require('path');
-const fs = require('fs');
+import { app, Tray, Menu, BrowserWindow, ipcMain, nativeImage } from 'electron';
+import type { MenuItemConstructorOptions } from 'electron';
+import path from 'node:path';
+import fs from 'node:fs';
 // 开发态注入 React DevTools（仅 dev 使用；打包后不引入，避免把扩展打包进生产）
-const { installExtension, REACT_DEVELOPER_TOOLS } = require('electron-devtools-installer');
+import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
+import type { ScheduleJson } from '../domain/types';
+import { parseScheduleText } from '../domain/schedule/parser';
+import { formatTime } from '../domain/schedule/format';
+import { cnTimeRangeSpeak } from '../domain/schedule/speak';
+import { getCurrentTask, getNextTask } from '../domain/schedule/runtime';
 
-let tray = null;
-let mainWindow = null;
-let trayRendererWindow = null;
-let trayTimer = null;
-let availableVoices = { zh: [], all: [] };
+let tray: Tray | null = null;
+let mainWindow: BrowserWindow | null = null;
+let trayRendererWindow: BrowserWindow | null = null;
+let trayTimer: NodeJS.Timeout | null = null;
+let availableVoices: { zh: string[]; all: string[] } = { zh: [], all: [] };
 
 // 开发环境(npm start)数据存项目内 dev-data/，生产环境(打包安装)数据存系统用户目录
 const DATA_PATH = app.isPackaged
@@ -30,7 +36,8 @@ function ensureDataDir() {
   }
 }
 
-function applyScheduleDefaults(s) {
+// 旧版 JSON 数据字段可能缺失，入参按任意结构处理，由本函数兜底为完整 Schedule 结构
+function applyScheduleDefaults(s: any) {
   if (!s) return s;
   return {
     ...s,
@@ -44,7 +51,7 @@ function applyScheduleDefaults(s) {
 }
 
 // 读取时间表数据
-function loadSchedules() {
+function loadSchedules(): ScheduleJson {
   try {
     if (fs.existsSync(DATA_PATH)) {
       const data = fs.readFileSync(DATA_PATH, 'utf-8');
@@ -59,67 +66,9 @@ function loadSchedules() {
 }
 
 // 保存时间表数据
-function saveSchedules(data) {
+function saveSchedules(data: ScheduleJson) {
   ensureDataDir();
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), 'utf-8');
-}
-
-// 解析时间表格式 "7:30-7:35 任务内容"，返回 { items, error }
-function parseScheduleText(text) {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-  const items = [];
-  const regex = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\s+(.+)$/;
-
-  for (const content of lines) {
-    const m = content.match(regex);
-    if (!m) {
-      return {
-        items: null,
-        error: `格式错误：应为 "HH:MM-HH:MM 任务内容"，错误行：${content}`
-      };
-    }
-    const startH = parseInt(m[1], 10);
-    const startM = parseInt(m[2], 10);
-    const endH = parseInt(m[3], 10);
-    const endM = parseInt(m[4], 10);
-    if (startH > 23 || startM > 59 || endH > 23 || endM > 59) {
-      return {
-        items: null,
-        error: `时间范围无效（小时 0-23，分钟 0-59），错误行：${content}`
-      };
-    }
-    const startMin = startH * 60 + startM;
-    const endMin = endH * 60 + endM;
-    if (endMin <= startMin) {
-      return {
-        items: null,
-        error: `结束时间必须大于开始时间，错误行：${content}`
-      };
-    }
-    items.push({
-      startMin,
-      endMin,
-      start: m[1] + ':' + m[2],
-      end: m[3] + ':' + m[4],
-      title: m[5].trim(),
-      durationMin: endMin - startMin
-    });
-  }
-  if (items.length === 0) return { items: null, error: '至少需要一行有效任务' };
-
-  // 检查时间重叠
-  const sorted = [...items].sort((a, b) => a.startMin - b.startMin);
-  for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].startMin < sorted[i - 1].endMin) {
-      const a = sorted[i - 1];
-      const b = sorted[i];
-      return {
-        items: null,
-        error: `时间重叠：「${a.start}-${a.end} ${a.title}」与「${b.start}-${b.end} ${b.title}」`
-      };
-    }
-  }
-  return { items, error: null };
 }
 
 function createTrayRendererWindow() {
@@ -144,7 +93,7 @@ function createTrayRendererWindow() {
   trayRendererWindow.setMenuBarVisibility(false);
   trayRendererWindow.on('closed', () => { trayRendererWindow = null; });
   trayRendererWindow.webContents.once('did-finish-load', () => {
-    updateTrayImage('无任务', '', true);
+    updateTrayImage('无任务', '');
   });
 }
 
@@ -154,16 +103,18 @@ function createTray() {
   if (fs.existsSync(iconPath)) {
     icon = nativeImage.createFromPath(iconPath);
   }
-  tray = new Tray(icon.resize({ width: 22, height: 22 }));
-  tray.setToolTip('流时');
+  const t = new Tray(icon.resize({ width: 22, height: 22 }));
+  tray = t;
+  t.setToolTip('流时');
   updateTrayMenu();
-  tray.on('click', () => {
-    tray.popUpContextMenu();
+  t.on('click', () => {
+    t.popUpContextMenu();
   });
 }
 
-function updateTrayMenu(nextTaskName) {
-  const template = [
+function updateTrayMenu(nextTaskName?: string | null) {
+  if (!tray) return;
+  const template: MenuItemConstructorOptions[] = [
     { label: '主面板', click: () => showMainWindow() },
     { type: 'separator' },
     { label: '退出', click: () => app.quit() }
@@ -193,105 +144,13 @@ function updateTrayMenu(nextTaskName) {
   tray.setContextMenu(contextMenu);
 }
 
-function formatTime(sec) {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-const CN_DIGITS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-
-function cnHour(h) {
-  if (h === 0) return '零点';
-  if (h === 10) return '十点';
-  if (h < 10) return CN_DIGITS[h] + '点';
-  if (h < 20) return '十' + CN_DIGITS[h - 10] + '点';
-  if (h === 20) return '二十点';
-  const tens = Math.floor(h / 10);
-  const ones = h % 10;
-  return CN_DIGITS[tens] + '十' + (ones === 0 ? '点' : CN_DIGITS[ones] + '点');
-}
-
-function cnMin(m) {
-  if (m === 0) return '';
-  if (m === 10) return '十分';
-  if (m < 10) return CN_DIGITS[m] + '分';
-  if (m < 20) return '十' + CN_DIGITS[m - 10] + '分';
-  const tens = Math.floor(m / 10);
-  const ones = m % 10;
-  return CN_DIGITS[tens] + '十' + (ones === 0 ? '分' : CN_DIGITS[ones] + '分');
-}
-
-function cnTimeRange(startMin, endMin) {
-  const sh = Math.floor(startMin / 60);
-  const sm = startMin % 60;
-  const eh = Math.floor(endMin / 60);
-  const em = endMin % 60;
-  const sc = cnHour(sh) + cnMin(sm);
-  const ec = cnHour(eh) + cnMin(em);
-  return sc + '到' + ec;
-}
-
-function getCurrentTask(runningId, schedules, nowSec) {
-  if (!runningId) return null;
-  const s = schedules.find((x) => x.id === runningId);
-  if (!s || !s.items || s.items.length === 0) return null;
-  for (const it of s.items) {
-    const startSec = it.startMin * 60;
-    const endSec = it.endMin * 60;
-    if (nowSec >= startSec && nowSec < endSec) {
-      const totalSec = (it.endMin - it.startMin) * 60;
-      const remaining = totalSec - (nowSec - startSec);
-      const key = `${it.startMin}-${it.endMin}-${it.title}`;
-      return { 
-        title: '『' + it.title + '』', 
-        rawTitle: it.title,
-        startMin: it.startMin,
-        endMin: it.endMin,
-        remaining, 
-        total: totalSec, 
-        key, 
-        endSec, 
-        soundStart: s.soundStart || 'success',
-        soundEnd: s.soundEnd || s.sound || 'chime' 
-      };
-    }
-  }
-  return null;
-}
-
-function getNextTask(runningId, schedules, nowSec) {
-  if (!runningId) return null;
-  const s = schedules.find((x) => x.id === runningId);
-  if (!s || !s.items || s.items.length === 0) return null;
-  
-  // Find tasks that start after nowSec
-  const upcoming = s.items
-    .filter(it => (it.startMin * 60) > nowSec)
-    .sort((a, b) => a.startMin - b.startMin);
-    
-  if (upcoming.length > 0) {
-    const next = upcoming[0];
-    return { title: next.title, start: next.start };
-  } else {
-    // Loop back to the first task
-    // Since items are usually sorted by start time, we take the one with min startMin
-    const sortedAll = [...s.items].sort((a, b) => a.startMin - b.startMin);
-    if (sortedAll.length > 0) {
-      const first = sortedAll[0];
-      return { title: first.title, start: first.start };
-    }
-  }
-  return null;
-}
-
-let lastTaskKey = null;
-let lastTaskEndSec = null;
+let lastTaskKey: string | null = null;
+let lastTaskEndSec: number | null = null;
 
 function startTrayTimer() {
   stopTrayTimer();
   let scrollIdx = 0;
-  let lastNextTaskName = null;
+  let lastNextTaskName: string | null = null;
   const tick = () => {
     const data = loadSchedules();
     const now = new Date();
@@ -314,7 +173,7 @@ function startTrayTimer() {
          trayRendererWindow.webContents.send('play-sound', task.soundStart);
          const sched = data.schedules.find((x) => x.id === data.runningId);
          if (sched && sched.speakEnabled) {
-           const timeStr = cnTimeRange(task.startMin, task.endMin);
+           const timeStr = cnTimeRangeSpeak(task.startMin, task.endMin);
            const speakText = timeStr + '，' + (task.rawTitle || '') + '。';
            trayRendererWindow.webContents.send('speak-text', {
              text: speakText,
@@ -333,7 +192,8 @@ function startTrayTimer() {
        if (lastTaskEndSec !== null && nowSec >= lastTaskEndSec) {
          // 获取刚才结束的任务
          const s = data.schedules.find(x => x.id === data.runningId);
-         const endedTaskSound = s ? (s.soundEnd || s.sound || 'chime') : 'chime';
+         // s.sound 为旧字段；加载时 applyScheduleDefaults 已兜底，此处 soundEnd 恒有值，等价于旧兼容写法
+         const endedTaskSound = s ? s.soundEnd || 'chime' : 'chime';
          if (trayRendererWindow) trayRendererWindow.webContents.send('play-sound', endedTaskSound);
        }
     }
@@ -391,7 +251,7 @@ function stopTrayTimer() {
   }
 }
 
-function updateTrayImage(taskNamePart, timePart) {
+function updateTrayImage(taskNamePart: string, timePart: string) {
   if (!tray || !trayRendererWindow) return;
   trayRendererWindow.webContents.send('render-tray-text', {
     taskNamePart: taskNamePart || '',
@@ -420,8 +280,8 @@ function showMainWindow() {
   }
 }
 
-function createMainWindow() {
-  mainWindow = new BrowserWindow({
+function createMainWindow(): BrowserWindow {
+  const win = new BrowserWindow({
     width: 900,
     height: 600,
     minWidth: 700,
@@ -433,17 +293,19 @@ function createMainWindow() {
       preload: path.join(__dirname, '../preload/index.js')
     }
   });
+  mainWindow = win;
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
-    mainWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html`)
+    win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html`)
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+    win.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
-  mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.on('closed', () => { mainWindow = null; });
+  win.once('ready-to-show', () => win.show());
+  win.on('closed', () => { mainWindow = null; });
   // 开发态自动打开 DevTools，方便查看 React 组件树（不需要可删掉这段）
   if (!app.isPackaged) {
-    mainWindow.webContents.openDevTools();
+    win.webContents.openDevTools();
   }
+  return win;
 }
 
 app.whenReady().then(async () => {
@@ -460,8 +322,8 @@ app.whenReady().then(async () => {
   ensureDataDir();
   createTrayRendererWindow();
   createTray();
-  createMainWindow();
-  mainWindow.hide();
+  const mainWin = createMainWindow();
+  mainWin.hide();
 
   // Tray renderer sends available voices list once
   ipcMain.on('voices-ready', (e, voices) => {
@@ -486,7 +348,7 @@ app.whenReady().then(async () => {
       startTrayTimer();
     } else {
       stopTrayTimer();
-      updateTrayImage('无任务', '', true);
+      updateTrayImage('无任务', '');
       // Clear menu when stopped
       updateTrayMenu(null);
       lastTaskKey = null;
