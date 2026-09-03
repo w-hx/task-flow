@@ -1,4 +1,3 @@
-import "./app.css"
 import { useEffect, useState } from 'react'
 import { ScheduleSidebar } from "./ScheduleSiderbar"
 import { ScheduleWorkspace } from "./ScheduleWorkspace"
