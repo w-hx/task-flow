@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Select, MenuItem, Button, Slider } from '@mui/material'
 import { useRendererStore, type ScheduleInput } from './useRendererStore'
 import { cnTimeRangeSpeak } from '../../domain/schedule/speak'
+import { PlayArrow, Stop } from '@mui/icons-material'
 
 // 声音选项（同 renderer.js 的 <select> 选项）
 const SOUND_OPTIONS = [
@@ -191,7 +192,7 @@ export const ScheduleForm: React.FC<Props> = ({ mode }) => {
             color={isRunning ? 'error' : 'success'}
             onClick={() => toggleRun()}
           >
-            {isRunning ? '停止运行' : '开始运行'}
+            {isRunning ? <><Stop /> 停止运行</> : <><PlayArrow /> 开始运行</>}
           </Button>
         )}
         <Button variant="contained" color="primary" onClick={handleSave} disabled={isEdit && isRunning}>

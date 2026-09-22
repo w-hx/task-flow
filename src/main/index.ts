@@ -20,8 +20,7 @@ let availableVoices: { zh: string[]; all: string[] } = { zh: [], all: [] };
 const DATA_PATH = app.isPackaged
   ? path.join(app.getPath('userData'), 'schedules.json')
   : path.join(process.cwd(), 'dev-data', 'schedules.json')
-const MAX_SCHEDULES = 10;
-
+// 给 Electron 内嵌的 Chromium 内核 追加一个启动时命令行开关 ，用来 关闭浏览器默认的「媒体自动播放需要用户交互」策略 。
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 if (process.platform === 'darwin' && app.dock) {
@@ -322,8 +321,8 @@ app.whenReady().then(async () => {
   ensureDataDir();
   createTrayRendererWindow();
   createTray();
-  const mainWin = createMainWindow();
-  mainWin.hide();
+  // 不 hide：ready-to-show 的 show() 必然晚于任何同步 hide，隐藏无效（启动即弹主窗）
+  createMainWindow();
 
   // Tray renderer sends available voices list once
   ipcMain.on('voices-ready', (e, voices) => {

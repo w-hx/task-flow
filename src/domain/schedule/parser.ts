@@ -15,7 +15,7 @@ export const parseScheduleText = (text: string): ParseScheduleResult => {
     if (!m) {
       return {
         items: null,
-        error: `格式错误：应为 "HH:MM-HH:MM 任务内容"，错误行：${content}`
+        error: `格式错误，应为 "HH:MM-HH:MM 任务内容"，错误行：${content}`
       };
     }
     const startH = parseInt(m[1], 10);
